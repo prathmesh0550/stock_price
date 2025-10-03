@@ -15,7 +15,7 @@ def return_snowflake_conn():
 
 
 @task
-def return_last_90d_price(symbol):
+def return_last_90d_price(symbol: str):
     vantage_api_key = Variable.get("vantage_api_key")
     url = f'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&apikey={vantage_api_key}'
     r = requests.get(url)
@@ -33,7 +33,7 @@ def return_last_90d_price(symbol):
 
 
 @task
-def load_data(conn, records):
+def load_data(records, database="MY_DB"):
     conn = return_snowflake_conn()
     target_table = f"{database}.raw.stock_price"
     cur = conn.cursor()
@@ -76,13 +76,13 @@ def load_data(conn, records):
 
 
 @task
-def check_records(conn):
+def check_records(database="MY_DB"):
     conn = return_snowflake_conn()
     target_table = f"{database}.raw.stock_price"
     cur = conn.cursor()
     try:
         cur.execute(f"SELECT COUNT(*) FROM {target_table}")
-        total = cur.fetchone()[1]
+        total = cur.fetchone()[0]
         print("Total number of rows:", total)
         return total
     finally:
@@ -92,11 +92,11 @@ def check_records(conn):
 
 
 with DAG(
-    dag_id="Stock_price_pipeline",
-    schedule=" 0 1 * * *",
+    dag_id="stock_price_pipeline",
+    schedule_interval="@daily",
     start_date=datetime(2025, 10, 4),
     catchup=False,
-    tags=["stocks", "snowflake"]
+    tags=["Stocks"]
 ) as dag:
 
     symbol = "TSCO.LON"
